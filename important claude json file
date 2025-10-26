@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ai_sticky_notes": {
+      "command": "python",
+      "args": ["C:\\Users\\yashs\\OneDrive\\Desktop\\mcp-server-main\\server.py"]
+    }
+  }
+}
