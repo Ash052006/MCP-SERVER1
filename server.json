@@ -1,0 +1,5 @@
+{
+  "name": "MyFirstServer",
+  "command": "uv",
+  "args": ["run", "server.py"]
+}
