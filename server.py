@@ -386,7 +386,101 @@ def ai_resume_formatter(resume_text: str, job_description: str = "") -> str:
         logging.exception("Error in ai_resume_formatter")
         return f"❌ Error processing resume: {e}"
 
+# ------------------------
+# 🧑‍⚕️ Tool 8: AI Healthmate & Medical Report Interpreter (with Image Support)
+# ------------------------
+import base64
+import logging
+import os
 
+@mcp.tool("ai_healthmate")
+def ai_healthmate(symptoms: str = "", report_text: str = "", report_image: str = "") -> str:
+    """
+    AI-powered health assistant that:
+    🩺 Analyzes symptoms and interprets medical reports (text or images).
+
+    Supports:
+      - Symptom analysis (e.g., 'fever and cough')
+      - Text-based lab reports (e.g., 'Hemoglobin: 9.5 g/dL')
+      - Image uploads (e.g., prescription, lab report photo)
+
+    Example:
+      ai_healthmate(symptoms="I have fatigue", report_text="Hemoglobin: 9.2 g/dL")
+      ai_healthmate(report_image="lab_report.jpg")
+      ai_healthmate(symptoms="cough and chest pain", report_image="xray_report.png")
+    """
+
+    try:
+        if not symptoms and not report_text and not report_image:
+            return "⚠️ Please provide symptoms, a text report, or an image file."
+
+        # Detect available Gemini model
+        model_name = _find_working_model()
+        if not model_name:
+            return "❌ No available Gemini model found for your API key."
+
+        model = genai.GenerativeModel(model_name)
+
+        # Handle image input (if provided)
+        image_part = None
+        if report_image:
+            if not os.path.exists(report_image):
+                return f"⚠️ File not found: {report_image}"
+
+            with open(report_image, "rb") as f:
+                image_bytes = f.read()
+                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+            # Gemini Vision expects this format
+            image_part = {
+                "mime_type": "image/jpeg" if report_image.lower().endswith(".jpg") or report_image.lower().endswith(".jpeg") else "image/png",
+                "data": image_base64
+            }
+
+        # Contextual health analysis prompt
+        prompt = f"""
+        You are "Healthmate" — an AI-powered healthcare assistant and medical report interpreter.
+
+        TASK 1️⃣: If the user provides symptoms:
+          - Identify possible conditions and their likelihood.
+          - Suggest appropriate specialists and next steps.
+
+        TASK 2️⃣: If the user provides a text or image-based medical report:
+          - Interpret the data in simple terms.
+          - Flag abnormal values or critical findings.
+          - Explain the significance of any medications seen in a prescription.
+
+        TASK 3️⃣: If both are provided:
+          - Combine both analyses to provide a holistic summary.
+
+        Output Format:
+        🩺 Summary  
+        🔍 Possible Diagnoses / Conditions  
+        🧠 Insights from Report (if available)  
+        👩‍⚕️ Recommended Specialist  
+        💡 Next Steps  
+
+        Symptoms: {symptoms or "N/A"}  
+        Medical Report (Text): {report_text or "N/A"}
+        """
+
+        # Include image if provided
+        if image_part:
+            response = model.generate_content(
+                [{"role": "user", "parts": [prompt, image_part]}]
+            )
+        else:
+            response = model.generate_content(prompt)
+
+        return (
+            f"🏥 **AI Healthmate Diagnostic Report (Model: {model_name})**\n\n"
+            f"{response.text.strip() if response and response.text else '⚠️ No response from Gemini.'}"
+        )
+
+    except Exception as e:
+        logging.exception("Error in ai_healthmate")
+        return f"❌ Error in AI Healthmate: {e}"
+    # test command ai_healthmate(report_image="C:\Users\yashs\OneDrive\Desktop\mcp-server-main\test.jpg")
 
 # ------------------------
 # 🚀 Run Server
