@@ -480,7 +480,7 @@ def ai_healthmate(symptoms: str = "", report_text: str = "", report_image: str =
     except Exception as e:
         logging.exception("Error in ai_healthmate")
         return f"❌ Error in AI Healthmate: {e}"
-    # test command ai_healthmate(report_image="C:\Users\yashs\OneDrive\Desktop\mcp-server-main\test.jpg")
+    # for photo we need to give its path like "report_image='lab_report.jpg'"
 
 # ------------------------
 # 🚀 Run Server
