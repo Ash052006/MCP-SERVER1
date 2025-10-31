@@ -574,6 +574,72 @@ def deepfake_detector(media_url: str = "") -> str:
         return f"❌ Error in deepfake_detector: {e}"
     # to test use a link or local file path like "media_url=("https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg")"
 
+
+# ------------------------
+# 🗣️ Tool 9: Virtual AI Debate Partner & Speaking Analyzer
+# ------------------------
+@mcp.tool("debate_partner")
+def debate_partner(topic: str, stance: str, transcript: str = "") -> str:
+    """
+    Acts as a virtual debate opponent and speaking coach.
+    1️⃣ Generates counterarguments to the given stance.
+    2️⃣ If transcript/audio text is provided, analyzes tone, clarity, and delivery.
+    3️⃣ Provides structured feedback for self-improvement.
+
+    Example:
+      debate_partner("AI replacing human jobs", "against")
+      debate_partner("Climate change policy", "for", transcript="I believe industries must...")
+    """
+    try:
+        if not topic or not stance:
+            return "⚠️ Please provide both a debate topic and your stance (for/against)."
+
+        # 🧠 Find working Gemini model
+        model_name = _find_working_model()
+        if not model_name:
+            return "❌ No available Gemini model found for your API key."
+
+        model = genai.GenerativeModel(model_name)
+
+        # 🎯 Build intelligent prompt
+        prompt = f"""
+        You are "DebateMate" — an AI debate partner and speaking improvement coach.
+
+        TASK 1️⃣: Debate Simulation
+        The user has chosen the topic: "{topic}" and is arguing "{stance}".
+        Generate strong, evidence-based counterarguments that challenge their position logically and persuasively.
+        Use a professional debate tone — clear, structured, and factual.
+
+        TASK 2️⃣: Speaking Feedback (if transcript provided)
+        Analyze the transcript below and comment on:
+          - Tone and delivery
+          - Persuasiveness and logical flow
+          - Areas of improvement (clarity, speed, emotional impact)
+
+        TASK 3️⃣: Summary
+        Provide a quick summary of what the user did well and what to improve for the next debate.
+
+        Transcript (if any):
+        {transcript or 'N/A'}
+
+        Output Format:
+        🎙️ Counterarguments
+        🧠 Speech Analysis (if transcript given)
+        💡 Improvement Tips
+        """
+
+        response = model.generate_content(prompt)
+
+        return (
+            f"🗣️ **AI Debate Partner & Speaking Analyzer (Model: {model_name})**\n\n"
+            f"{response.text.strip() if response and response.text else '⚠️ No response from Gemini.'}"
+        )
+
+    except Exception as e:
+        logging.exception("Error in debate_partner")
+        return f"❌ Error in Debate Partner: {e}"
+
+
 # ------------------------
 # 🚀 Run Server
 # ------------------------
