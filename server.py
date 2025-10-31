@@ -31,7 +31,7 @@ CANDIDATE_MODELS = [
 ]
 
 _WORKING_MODEL = None  # cache working model name
-
+_SESSION_CONTEXTS = {}  # session_id → {domain: str}
 
 def _find_working_model():
     """Finds and caches the first working Gemini model."""
@@ -288,57 +288,105 @@ def ai_currency_converter(amount: float, from_currency: str, to_currency: str, c
         return f"❌ Error converting currency: {e}"
 
 # ------------------------
-# 📄 Tool 7: AI-based Resume Formatter
+# 🧠 Tool: AI Resume Optimizer + Job Screening & Ranking
 # ------------------------
-import google.generativeai as genai
-import logging
-
 @mcp.tool()
-def ai_resume_formatter(resume_text: str) -> str:
+def ai_resume_formatter(resume_text: str, job_description: str = "") -> str:
     """
-    Formats and improves a resume using Gemini AI.
+    Formats, evaluates, and improves a resume using Gemini AI.
+    If a job description is provided, it also scores and suggests additions with section-level guidance.
+
     Example:
-    ai_resume_formatter("I am a software engineer skilled in python and web dev...")
+    ai_resume_formatter(
+        "I am a software engineer skilled in python and web dev...",
+        "Looking for backend developer with Flask and API experience"
+    )
     """
     try:
+        # --- Step 1: Basic validation ---
         if not resume_text or len(resume_text.split()) < 50:
             return "⚠️ Please provide a detailed resume text (at least 50 words)."
 
-        # 🔍 Find a working Gemini model
+        # --- Step 2: Load Gemini model ---
         model_name = _find_working_model()
         if not model_name:
-            return (
-                "❌ No available Gemini model found for your API key. "
-                "Please check your key or upgrade your access."
-            )
-
-        # 🧠 Generate formatted and improved resume
+            return "❌ No available Gemini model found. Please check your Gemini API key."
         model = genai.GenerativeModel(model_name)
-        prompt = f"""
-        You are a professional HR resume reviewer and formatting expert.
-        Reformat and improve the following resume content.
-        Keep it ATS-friendly, concise, and neatly structured.
-        Focus on:
-        - Consistent section titles (e.g., Objective, Skills, Experience, Education)
-        - Bullet points where applicable
-        - Professional tone and formatting
-        - Remove redundancy or grammatical errors
 
-        Resume Content:
+        # --- Step 3: Format resume professionally ---
+        format_prompt = f"""
+        You are a senior HR expert and resume optimization AI.
+        Reformat and polish the following resume.
+        Follow best ATS practices and structure it neatly.
+
+        Focus on:
+        - Consistent professional formatting (Objective, Skills, Experience, Education, Projects)
+        - Bullet points for achievements
+        - Strong action verbs and quantifiable results
+        - Clear hierarchy and white space
+
+        Resume Text:
         {resume_text}
 
-        Return the formatted resume below:
+        Return the improved, formatted resume.
         """
+        formatted_response = model.generate_content(format_prompt)
+        formatted_resume = (
+            formatted_response.text.strip()
+            if formatted_response and formatted_response.text
+            else "⚠️ No formatted output from Gemini."
+        )
 
-        response = model.generate_content(prompt)
+        # --- Step 4: Job relevance & section-wise recommendations ---
+        improvement_feedback = ""
+        if job_description.strip():
+            improve_prompt = f"""
+            You are an expert ATS recruiter and resume coach.
+
+            Compare this resume with the job description.
+            1. Identify missing or weak areas (skills, keywords, experience, achievements).
+            2. Suggest WHAT to add or modify.
+            3. Specify WHERE exactly it should go (e.g., "Add X under Skills", "Expand Y in Experience").
+            4. For each suggestion, include a short reason why it matters for this job.
+
+            Resume:
+            {formatted_resume}
+
+            Job Description:
+            {job_description}
+
+            Respond in this format:
+            - Match Score: (X%)
+            - Section-wise Feedback:
+              * [Section Name]: What to add/change, and why.
+              * ...
+            - Summary of Improvements: Short 2-line advice.
+            """
+
+            improve_response = model.generate_content(improve_prompt)
+            improvement_feedback = (
+                improve_response.text.strip()
+                if improve_response and improve_response.text
+                else "⚠️ No improvement feedback generated."
+            )
+        else:
+            improvement_feedback = (
+                "🧾 No job description provided — skipping job relevance analysis."
+            )
+
+        # --- Step 5: Return structured output ---
         return (
-            f"🧾 **AI-Formatted Resume (Model: {model_name})**\n\n"
-            f"{response.text.strip() if response and response.text else '⚠️ No response from Gemini.'}"
+            f"🧠 **AI Resume Optimizer + Screening System** (Model: {model_name})\n"
+            f"-----------------------------------------------------------\n\n"
+            f"📄 **Formatted Resume:**\n{formatted_resume}\n\n"
+            f"💼 **ATS Match & Section-wise Recommendations:**\n{improvement_feedback}\n"
         )
 
     except Exception as e:
         logging.exception("Error in ai_resume_formatter")
-        return f"❌ Error formatting resume: {e}"
+        return f"❌ Error processing resume: {e}"
+
+
 
 # ------------------------
 # 🚀 Run Server
