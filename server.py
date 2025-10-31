@@ -483,6 +483,98 @@ def ai_healthmate(symptoms: str = "", report_text: str = "", report_image: str =
     # for photo we need to give its path like "report_image='lab_report.jpg'"
 
 # ------------------------
+# 🎥 Tool 9: Fake Content & Deepfake Video Detection
+# ------------------------
+import requests
+import base64
+import os
+from io import BytesIO
+
+@mcp.tool("deepfake_detector")
+def deepfake_detector(media_url: str = "") -> str:
+    """
+    Detects fake or AI-generated content in an image or video.
+
+    Input:
+        media_url (str): URL or local path of an image or video file.
+
+    Output:
+        Authenticity score and reasoned analysis:
+        - Is it likely real or fake?
+        - Key visual or metadata clues that led to the conclusion.
+
+    Example:
+        deepfake_detector("https://example.com/sample_video.mp4")
+        deepfake_detector("photo.jpg")
+    """
+    try:
+        if not media_url:
+            return "⚠️ Please provide an image or video URL/path for analysis."
+
+        # Find Gemini Vision model
+        model_name = _find_working_model()
+        if not model_name:
+            return "❌ No available Gemini model found for your API key."
+
+        model = genai.GenerativeModel(model_name)
+
+        # Load content
+        file_data = None
+        if media_url.startswith("http"):
+            response = requests.get(media_url)
+            if response.status_code == 200:
+                file_data = response.content
+            else:
+                return f"❌ Failed to fetch media from URL ({response.status_code})."
+        elif os.path.exists(media_url):
+            with open(media_url, "rb") as f:
+                file_data = f.read()
+        else:
+            return "⚠️ Invalid URL or file path."
+
+        # Encode to base64
+        encoded_media = base64.b64encode(file_data).decode("utf-8")
+
+        # Prepare prompt
+        prompt = f"""
+        You are an expert digital forensics and AI media authenticity analyst.
+        Analyze the following image or video for signs of manipulation, deepfake synthesis, or AI generation.
+
+        TASKS:
+        1️⃣ Identify if the media is likely authentic or fake.
+        2️⃣ Give a confidence score (0–100%).
+        3️⃣ Provide a brief explanation:
+            - Key clues (lighting, facial inconsistencies, metadata, background artifacts)
+            - Type of manipulation suspected (GAN-based, face swap, diffusion-generated, etc.)
+        4️⃣ If it's fake, specify whether it's:
+            - AI-generated
+            - Deepfake face-swap
+            - Edited or composited
+
+        Return structured output as:
+        🎯 Authenticity Report
+        - Verdict: Real / Likely Fake / Deepfake
+        - Confidence: [score]%
+        - Explanation: [brief reasoning]
+        - Recommended Verification Step: [e.g., reverse image search, metadata check]
+        """
+
+        # Pass both image/video and text prompt
+        response = model.generate_content(
+            [prompt, {"mime_type": "image/jpeg", "data": encoded_media}]
+        )
+
+        return (
+            f"🎥 **Deepfake Detection Report (Model: {model_name})**\n\n"
+            f"{response.text.strip() if response and response.text else '⚠️ No response from Gemini Vision.'}"
+        )
+
+    except Exception as e:
+        logging.exception("Error in deepfake_detector")
+        return f"❌ Error in deepfake_detector: {e}"
+    # to test use a link or local file path like "media_url=("https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg")"
+
+# ------------------------
 # 🚀 Run Server
 # ------------------------
 if __name__ == "__main__":
